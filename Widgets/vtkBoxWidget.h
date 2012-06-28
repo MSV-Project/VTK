@@ -51,7 +51,7 @@
 // transformation (use the GetTransform() method). Typical usage of the
 // widget is to make use of the StartInteractionEvent, InteractionEvent, and
 // EndInteractionEvent events. The InteractionEvent is called on mouse
-// motion; the other two events are called on button down and button up 
+// motion; the other two events are called on button down and button up
 // (either left or right button).
 //
 // Some additional features of this class include the ability to control the
@@ -59,10 +59,6 @@
 // selected and unselected representations of the parts of the widget. For
 // example, you can set the property for the handles, faces, and outline in
 // their normal and selected states.
-
-// .SECTION Caveats
-// Note that handles can be picked even when they are "behind" other actors.
-// This is an intended feature and not a bug.
 //
 // The box widget can be oriented by specifying a transformation matrix.
 // This transformation is applied to the initial bounding box as defined by
@@ -70,7 +66,7 @@
 // to a unit box centered at the origin; this is wrong!
 
 // .SECTION See Also
-// vtk3DWidget vtkPointWidget vtkLineWidget vtkPlaneWidget 
+// vtk3DWidget vtkPointWidget vtkLineWidget vtkPlaneWidget
 // vtkImplicitPlaneWidget vtkImagePlaneWidget
 
 #ifndef __vtkBoxWidget_h
@@ -105,7 +101,7 @@ public:
   virtual void PlaceWidget(double bounds[6]);
   void PlaceWidget()
     {this->Superclass::PlaceWidget();}
-  void PlaceWidget(double xmin, double xmax, double ymin, double ymax, 
+  void PlaceWidget(double xmin, double xmax, double ymin, double ymax,
                    double zmin, double zmax)
     {this->Superclass::PlaceWidget(xmin,xmax,ymin,ymax,zmin,zmax);}
 
@@ -136,9 +132,9 @@ public:
 
   // Description:
   // Set the position, scale and orientation of the box widget using the
-  // transform specified. Note that the transformation is relative to 
+  // transform specified. Note that the transformation is relative to
   // where PlaceWidget was initially called (i.e., the original bounding
-  // box). 
+  // box).
   virtual void SetTransform(vtkTransform* t);
 
   // Description:
@@ -153,8 +149,8 @@ public:
   void GetPolyData(vtkPolyData *pd);
 
   // Description:
-  // Get the handle properties (the little balls are the handles). The 
-  // properties of the handles when selected and normal can be 
+  // Get the handle properties (the little balls are the handles). The
+  // properties of the handles when selected and normal can be
   // set.
   vtkGetObjectMacro(HandleProperty,vtkProperty);
   vtkGetObjectMacro(SelectedHandleProperty,vtkProperty);
@@ -164,21 +160,21 @@ public:
   // visibility.
   void HandlesOn();
   void HandlesOff();
-  
+
   // Description:
-  // Get the face properties (the faces of the box). The 
-  // properties of the face when selected and normal can be 
+  // Get the face properties (the faces of the box). The
+  // properties of the face when selected and normal can be
   // set.
   vtkGetObjectMacro(FaceProperty,vtkProperty);
   vtkGetObjectMacro(SelectedFaceProperty,vtkProperty);
-  
+
   // Description:
-  // Get the outline properties (the outline of the box). The 
-  // properties of the outline when selected and normal can be 
+  // Get the outline properties (the outline of the box). The
+  // properties of the outline when selected and normal can be
   // set.
   vtkGetObjectMacro(OutlineProperty,vtkProperty);
   vtkGetObjectMacro(SelectedOutlineProperty,vtkProperty);
-  
+
   // Description:
   // Control the representation of the outline. This flag enables
   // face wires. By default face wires are off.
@@ -223,11 +219,11 @@ protected:
     Outside
   };
 //ETX
-    
+
   // Handles the events
-  static void ProcessEvents(vtkObject* object, 
+  static void ProcessEvents(vtkObject* object,
                             unsigned long event,
-                            void* clientdata, 
+                            void* clientdata,
                             void* calldata);
 
   // ProcessEvents() dispatches to these methods.
@@ -238,7 +234,7 @@ protected:
   virtual void OnMiddleButtonUp();
   virtual void OnRightButtonDown();
   virtual void OnRightButtonUp();
-  
+
   // the hexahedron (6 faces)
   vtkActor          *HexActor;
   vtkPolyDataMapper *HexMapper;
@@ -261,7 +257,7 @@ protected:
   void HighlightOutline(int highlight);
   void ComputeNormals();
   virtual void SizeHandles();
-  
+
   // wireframe outline
   vtkActor          *HexOutline;
   vtkPolyDataMapper *OutlineMapper;
@@ -272,7 +268,10 @@ protected:
   vtkCellPicker *HexPicker;
   vtkActor *CurrentHandle;
   int      CurrentHexFace;
-  
+
+  // Register internal Pickers within PickingManager
+  virtual void RegisterPickers();
+
   // Methods to manipulate the hexahedron.
   virtual void Translate(double *p1, double *p2);
   virtual void Scale(double *p1, double *p2, int X, int Y);
@@ -286,17 +285,17 @@ protected:
 
   //"dir" is the direction in which the face can be moved i.e. the axis passing
   //through the center
-  void MoveFace(double *p1, double *p2, double *dir, 
+  void MoveFace(double *p1, double *p2, double *dir,
                 double *x1, double *x2, double *x3, double *x4,
                 double *x5);
   //Helper method to obtain the direction in which the face is to be moved.
   //Handles special cases where some of the scale factors are 0.
-  void GetDirection(const double Nx[3],const double Ny[3], 
+  void GetDirection(const double Nx[3],const double Ny[3],
                     const double Nz[3], double dir[3]);
 
   // Transform the hexahedral points (used for rotations)
   vtkTransform *Transform;
-  
+
   // Properties used to control the appearance of selected objects and
   // the manipulator in general.
   vtkProperty *HandleProperty;
@@ -306,13 +305,13 @@ protected:
   vtkProperty *OutlineProperty;
   vtkProperty *SelectedOutlineProperty;
   void CreateDefaultProperties();
-  
+
   // Control the orientation of the normals
   int InsideOut;
   int OutlineFaceWires;
   int OutlineCursorWires;
   void GenerateOutline();
-  
+
   // Control whether scaling, rotation, and translation are supported
   int TranslationEnabled;
   int ScalingEnabled;

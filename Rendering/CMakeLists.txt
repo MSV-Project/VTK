@@ -136,6 +136,7 @@ SET( Kit_SRCS
   vtkParallelCoordinatesActor.cxx
   vtkParallelCoordinatesInteractorStyle.cxx
   vtkPicker.cxx
+  vtkPickingManager.cxx
   vtkPixelBufferObject.cxx
   vtkPointPicker.cxx
   vtkPointSetToLabelHierarchy.cxx

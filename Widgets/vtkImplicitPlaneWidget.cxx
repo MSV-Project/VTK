@@ -28,6 +28,7 @@
 #include "vtkMath.h"
 #include "vtkObjectFactory.h"
 #include "vtkOutlineFilter.h"
+#include "vtkPickingManager.h"
 #include "vtkPlane.h"
 #include "vtkPolyData.h"
 #include "vtkPolyDataMapper.h"
@@ -62,7 +63,8 @@ vtkImplicitPlaneWidget::vtkImplicitPlaneWidget() : vtkPolyDataSourceWidget()
   this->Outline = vtkOutlineFilter::New();
   this->Outline->SetInput(this->Box);
   this->OutlineMapper = vtkPolyDataMapper::New();
-  this->OutlineMapper->SetInput(this->Outline->GetOutput());
+  this->OutlineMapper->SetInputConnection(
+    this->Outline->GetOutputPort());
   this->OutlineActor = vtkActor::New();
   this->OutlineActor->SetMapper(this->OutlineMapper);
   this->OutlineTranslation = 1;
@@ -73,18 +75,22 @@ vtkImplicitPlaneWidget::vtkImplicitPlaneWidget() : vtkPolyDataSourceWidget()
   this->Cutter->SetInput(this->Box);
   this->Cutter->SetCutFunction(this->Plane);
   this->CutMapper = vtkPolyDataMapper::New();
-  this->CutMapper->SetInput(this->Cutter->GetOutput());
+  this->CutMapper->SetInputConnection(
+    this->Cutter->GetOutputPort());
   this->CutActor = vtkActor::New();
   this->CutActor->SetMapper(this->CutMapper);
   this->DrawPlane = 1;
 
   this->Edges = vtkFeatureEdges::New();
-  this->Edges->SetInput(this->Cutter->GetOutput());
+  this->Edges->SetInputConnection(
+    this->Cutter->GetOutputPort());
   this->EdgesTuber = vtkTubeFilter::New();
-  this->EdgesTuber->SetInput(this->Edges->GetOutput());
+  this->EdgesTuber->SetInputConnection(
+    this->Edges->GetOutputPort());
   this->EdgesTuber->SetNumberOfSides(12);
   this->EdgesMapper = vtkPolyDataMapper::New();
-  this->EdgesMapper->SetInput(this->EdgesTuber->GetOutput());
+  this->EdgesMapper->SetInputConnection(
+    this->EdgesTuber->GetOutputPort());
   this->EdgesActor = vtkActor::New();
   this->EdgesActor->SetMapper(this->EdgesMapper);
   this->Tubing = 1; //control whether tubing is on
@@ -93,7 +99,8 @@ vtkImplicitPlaneWidget::vtkImplicitPlaneWidget() : vtkPolyDataSourceWidget()
   this->LineSource = vtkLineSource::New();
   this->LineSource->SetResolution(1);
   this->LineMapper = vtkPolyDataMapper::New();
-  this->LineMapper->SetInput(this->LineSource->GetOutput());
+  this->LineMapper->SetInputConnection(
+    this->LineSource->GetOutputPort());
   this->LineActor = vtkActor::New();
   this->LineActor->SetMapper(this->LineMapper);
 
@@ -101,7 +108,8 @@ vtkImplicitPlaneWidget::vtkImplicitPlaneWidget() : vtkPolyDataSourceWidget()
   this->ConeSource->SetResolution(12);
   this->ConeSource->SetAngle(25.0);
   this->ConeMapper = vtkPolyDataMapper::New();
-  this->ConeMapper->SetInput(this->ConeSource->GetOutput());
+  this->ConeMapper->SetInputConnection(
+    this->ConeSource->GetOutputPort());
   this->ConeActor = vtkActor::New();
   this->ConeActor->SetMapper(this->ConeMapper);
 
@@ -109,7 +117,8 @@ vtkImplicitPlaneWidget::vtkImplicitPlaneWidget() : vtkPolyDataSourceWidget()
   this->LineSource2 = vtkLineSource::New();
   this->LineSource2->SetResolution(1);
   this->LineMapper2 = vtkPolyDataMapper::New();
-  this->LineMapper2->SetInput(this->LineSource2->GetOutput());
+  this->LineMapper2->SetInputConnection(
+    this->LineSource2->GetOutputPort());
   this->LineActor2 = vtkActor::New();
   this->LineActor2->SetMapper(this->LineMapper2);
 
@@ -117,7 +126,8 @@ vtkImplicitPlaneWidget::vtkImplicitPlaneWidget() : vtkPolyDataSourceWidget()
   this->ConeSource2->SetResolution(12);
   this->ConeSource2->SetAngle(25.0);
   this->ConeMapper2 = vtkPolyDataMapper::New();
-  this->ConeMapper2->SetInput(this->ConeSource2->GetOutput());
+  this->ConeMapper2->SetInputConnection(
+    this->ConeSource2->GetOutputPort());
   this->ConeActor2 = vtkActor::New();
   this->ConeActor2->SetMapper(this->ConeMapper2);
 
@@ -126,7 +136,8 @@ vtkImplicitPlaneWidget::vtkImplicitPlaneWidget() : vtkPolyDataSourceWidget()
   this->Sphere->SetThetaResolution(16);
   this->Sphere->SetPhiResolution(8);
   this->SphereMapper = vtkPolyDataMapper::New();
-  this->SphereMapper->SetInput(this->Sphere->GetOutput());
+  this->SphereMapper->SetInputConnection(
+    this->Sphere->GetOutputPort());
   this->SphereActor = vtkActor::New();
   this->SphereActor->SetMapper(this->SphereMapper);
   this->OriginTranslation = 1;
@@ -517,9 +528,12 @@ void vtkImplicitPlaneWidget::OnLeftButtonDown()
     return;
     }
 
-  vtkAssemblyPath *path;
-  this->Picker->Pick(X,Y,0.0,this->CurrentRenderer);
-  path = this->Picker->GetPath();
+  vtkAssemblyPath* path =
+    this->Interactor->GetAssemblyPath(X, Y, 0.,
+                                      this->Picker,
+                                      this->CurrentRenderer,
+                                      this,
+                                      this->ManagesPicking);
 
   if ( path == NULL ) //not picking this widget
     {
@@ -611,9 +625,12 @@ void vtkImplicitPlaneWidget::OnMiddleButtonDown()
     }
 
   // Okay, we can process this.
-  vtkAssemblyPath *path;
-  this->Picker->Pick(X,Y,0.0,this->CurrentRenderer);
-  path = this->Picker->GetPath();
+  vtkAssemblyPath* path =
+    this->Interactor->GetAssemblyPath(X, Y, 0.,
+                                      this->Picker,
+                                      this->CurrentRenderer,
+                                      this,
+                                      this->ManagesPicking);
 
   if ( path == NULL ) //nothing picked
     {
@@ -673,9 +690,13 @@ void vtkImplicitPlaneWidget::OnRightButtonDown()
 
     // Okay, we can process this. Try to pick handles first;
     // if no handles picked, then pick the bounding box.
-    vtkAssemblyPath *path;
-    this->Picker->Pick(X,Y,0.0,this->CurrentRenderer);
-    path = this->Picker->GetPath();
+    vtkAssemblyPath* path =
+      this->Interactor->GetAssemblyPath(X, Y, 0.,
+                                        this->Picker,
+                                        this->CurrentRenderer,
+                                        this,
+                                        this->ManagesPicking);
+
     if ( path == NULL ) //nothing picked
       {
       this->State = vtkImplicitPlaneWidget::Outside;
@@ -992,6 +1013,12 @@ void vtkImplicitPlaneWidget::CreateDefaultProperties()
   this->EdgesProperty = vtkProperty::New();
 }
 
+//------------------------------------------------------------------------------
+void vtkImplicitPlaneWidget::RegisterPickers()
+{
+  this->Interactor->GetPickingManager()->AddPicker(this->Picker, this);
+}
+
 //----------------------------------------------------------------------------
 void vtkImplicitPlaneWidget::PlaceWidget(double bds[6])
 {
@@ -1052,7 +1079,7 @@ void vtkImplicitPlaneWidget::SetOrigin(double x, double y, double z)
 //----------------------------------------------------------------------------
 // Description:
 // Set the origin of the plane.
-void vtkImplicitPlaneWidget::SetOrigin(double x[3]) 
+void vtkImplicitPlaneWidget::SetOrigin(double x[3])
 {
   double *bounds = this->Outline->GetOutput()->GetBounds();
   for (int i=0; i<3; i++)
@@ -1073,13 +1100,13 @@ void vtkImplicitPlaneWidget::SetOrigin(double x[3])
 //----------------------------------------------------------------------------
 // Description:
 // Get the origin of the plane.
-double* vtkImplicitPlaneWidget::GetOrigin() 
+double* vtkImplicitPlaneWidget::GetOrigin()
 {
   return this->Plane->GetOrigin();
 }
 
 //----------------------------------------------------------------------------
-void vtkImplicitPlaneWidget::GetOrigin(double xyz[3]) 
+void vtkImplicitPlaneWidget::GetOrigin(double xyz[3])
 {
   this->Plane->GetOrigin(xyz);
 }
@@ -1087,7 +1114,7 @@ void vtkImplicitPlaneWidget::GetOrigin(double xyz[3])
 //----------------------------------------------------------------------------
 // Description:
 // Set the normal to the plane.
-void vtkImplicitPlaneWidget::SetNormal(double x, double y, double z) 
+void vtkImplicitPlaneWidget::SetNormal(double x, double y, double z)
 {
   double n[3];
   n[0] = x;
@@ -1101,7 +1128,7 @@ void vtkImplicitPlaneWidget::SetNormal(double x, double y, double z)
 //----------------------------------------------------------------------------
 // Description:
 // Set the normal to the plane.
-void vtkImplicitPlaneWidget::SetNormal(double n[3]) 
+void vtkImplicitPlaneWidget::SetNormal(double n[3])
 {
   this->SetNormal(n[0], n[1], n[2]);
 }
@@ -1109,13 +1136,13 @@ void vtkImplicitPlaneWidget::SetNormal(double n[3])
 //----------------------------------------------------------------------------
 // Description:
 // Get the normal to the plane.
-double* vtkImplicitPlaneWidget::GetNormal() 
+double* vtkImplicitPlaneWidget::GetNormal()
 {
   return this->Plane->GetNormal();
 }
 
 //----------------------------------------------------------------------------
-void vtkImplicitPlaneWidget::GetNormal(double xyz[3]) 
+void vtkImplicitPlaneWidget::GetNormal(double xyz[3])
 {
   this->Plane->GetNormal(xyz);
 }
@@ -1191,8 +1218,8 @@ void vtkImplicitPlaneWidget::SetNormalToZAxis (int var)
 
 //----------------------------------------------------------------------------
 void vtkImplicitPlaneWidget::GetPolyData(vtkPolyData *pd)
-{ 
-  pd->ShallowCopy(this->Cutter->GetOutput()); 
+{
+  pd->ShallowCopy(this->Cutter->GetOutput());
 }
 
 //----------------------------------------------------------------------------
@@ -1208,7 +1235,7 @@ void vtkImplicitPlaneWidget::GetPlane(vtkPlane *plane)
     {
     return;
     }
-  
+
   plane->SetNormal(this->Plane->GetNormal());
   plane->SetOrigin(this->Plane->GetOrigin());
 }
@@ -1277,11 +1304,13 @@ void vtkImplicitPlaneWidget::UpdateRepresentation()
   // Control the look of the edges
   if ( this->Tubing )
     {
-    this->EdgesMapper->SetInput(this->EdgesTuber->GetOutput());
+    this->EdgesMapper->SetInputConnection(
+      this->EdgesTuber->GetOutputPort());
     }
   else
     {
-    this->EdgesMapper->SetInput(this->Edges->GetOutput());
+    this->EdgesMapper->SetInputConnection(
+      this->Edges->GetOutputPort());
     }
 }
 
@@ -1299,4 +1328,3 @@ void vtkImplicitPlaneWidget::SizeHandles()
 
   this->EdgesTuber->SetRadius(0.25*radius);
 }
-

@@ -63,13 +63,13 @@ public:
     Erasing
   };
 //ETX
-  
+
   vtkSetMacro(InteractionState, int);
 
   // Description:
   // Force the spline widget to be projected onto one of the orthogonal planes.
   // Remember that when the InteractionState changes, a ModifiedEvent is invoked.
-  // This can be used to snap the spline to the plane if it is orginally
+  // This can be used to snap the spline to the plane if it is originally
   // not aligned.  The normal in SetProjectionNormal is 0,1,2 for YZ,XZ,XY
   // planes respectively and 3 for arbitrary oblique planes when the widget
   // is tied to a vtkPlaneSource.
@@ -182,7 +182,7 @@ public:
   void InitializeHandles(vtkPoints* points);
 
  // Description:
-  // These are methods that satisfy vtkWidgetRepresentation's API. Note that a 
+  // These are methods that satisfy vtkWidgetRepresentation's API. Note that a
   // version of place widget is available where the center and handle position
   // are specified.
   virtual void BuildRepresentation();
@@ -191,7 +191,7 @@ public:
   virtual void WidgetInteraction(double e[2]);
   virtual void EndWidgetInteraction(double e[2]);
   virtual double *GetBounds();
-  
+
   // Description:
   // Methods supporting, and required by, the rendering process.
   virtual void ReleaseGraphicsResources(vtkWindow*);
@@ -209,7 +209,7 @@ public:
 protected:
   vtkSplineRepresentation();
   ~vtkSplineRepresentation();
-  
+
   double LastEventPosition[3];
   double Bounds[6];
 
@@ -229,7 +229,7 @@ protected:
   vtkParametricFunctionSource *ParametricFunctionSource;
   int NumberOfHandles;
   int Closed;
-  
+
   // The line segments
   vtkActor           *LineActor;
   void HighlightLine(int highlight);
@@ -250,6 +250,9 @@ protected:
   double LastPickPosition[3];
   vtkActor *CurrentHandle;
   int CurrentHandleIndex;
+
+  // Register internal Pickers within PickingManager
+  virtual void RegisterPickers();
 
   // Methods to manipulate the spline.
   void MovePoint(double *p1, double *p2);

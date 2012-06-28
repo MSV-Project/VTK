@@ -14,13 +14,14 @@
 =========================================================================*/
 #include "vtkInteractorObserver.h"
 
+#include "vtkAbstractPropPicker.h"
 #include "vtkCallbackCommand.h"
 #include "vtkObjectFactory.h"
 #include "vtkRenderer.h"
 #include "vtkRenderWindow.h"
 #include "vtkRenderWindowInteractor.h"
 #include "vtkObserverMediator.h" 
-
+#include "vtkPickingManager.h"
 
 vtkCxxSetObjectMacro(vtkInteractorObserver,DefaultRenderer,vtkRenderer);
 
@@ -44,6 +45,7 @@ vtkInteractorObserver::vtkInteractorObserver()
   this->DefaultRenderer = NULL;
 
   this->Priority = 0.0f;
+  this->ManagesPicking = true;
 
   this->KeyPressActivation = 1;
   this->KeyPressActivationValue = 'i';
@@ -57,6 +59,11 @@ vtkInteractorObserver::vtkInteractorObserver()
 //----------------------------------------------------------------------------
 vtkInteractorObserver::~vtkInteractorObserver()
 {
+  if(this->Interactor)
+    {
+    this->Interactor->GetPickingManager()->RemoveObject(this);
+    }
+
   this->SetEnabled(0);
   this->SetCurrentRenderer(NULL);
   this->SetDefaultRenderer(NULL);
@@ -151,9 +158,24 @@ void vtkInteractorObserver::SetInteractor(vtkRenderWindowInteractor* i)
     this->DeleteObserverTag = i->AddObserver(vtkCommand::DeleteEvent, 
                                              this->KeyPressCallbackCommand, 
                                              this->Priority);
+
+    this->RegisterPickers();
     }
   
   this->Modified();
+}
+
+//----------------------------------------------------------------------------
+void vtkInteractorObserver::PickersModified()
+{
+  if (!this->Interactor ||
+      !this->Interactor->GetPickingManager())
+    {
+    return;
+    }
+
+  this->Interactor->GetPickingManager()->RemoveObject(this);
+  this->RegisterPickers();
 }
 
 //----------------------------------------------------------------------------

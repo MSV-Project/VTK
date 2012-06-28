@@ -113,6 +113,9 @@ protected:
   // For picking the button
   vtkPropPicker *Picker;
 
+  // Register internal Pickers within PickingManager
+  virtual void RegisterPickers();
+
 private:
   vtkProp3DButtonRepresentation(const vtkProp3DButtonRepresentation&);  //Not implemented
   void operator=(const vtkProp3DButtonRepresentation&);  //Not implemented

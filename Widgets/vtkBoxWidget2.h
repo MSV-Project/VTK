@@ -31,7 +31,7 @@
 // the event that it handles.
 //
 // To use this widget, you generally pair it with a vtkBoxRepresentation
-// (or a subclass). Variuos options are available in the representation for 
+// (or a subclass). Variuos options are available in the representation for
 // controlling how the widget appears, and how the widget functions.
 //
 // .SECTION Event Bindings
@@ -39,14 +39,14 @@
 // watches the vtkRenderWindowInteractor for these events):
 // <pre>
 // If one of the seven handles are selected:
-//   LeftButtonPressEvent - select the appropriate handle 
-//   LeftButtonReleaseEvent - release the currently selected handle 
+//   LeftButtonPressEvent - select the appropriate handle
+//   LeftButtonReleaseEvent - release the currently selected handle
 //   MouseMoveEvent - move the handle
 // If one of the faces is selected:
 //   LeftButtonPressEvent - select a box face
 //   LeftButtonReleaseEvent - release the box face
 //   MouseMoveEvent - rotate the box
-// In all the cases, independent of what is picked, the widget responds to the 
+// In all the cases, independent of what is picked, the widget responds to the
 // following VTK events:
 //   MiddleButtonPressEvent - translate the widget
 //   MiddleButtonReleaseEvent - release the widget
@@ -56,7 +56,7 @@
 // </pre>
 //
 // Note that the event bindings described above can be changed using this
-// class's vtkWidgetEventTranslator. This class translates VTK events 
+// class's vtkWidgetEventTranslator. This class translates VTK events
 // into the vtkBoxWidget2's widget events:
 // <pre>
 //   vtkWidgetEvent::Select -- some part of the widget has been selected
@@ -76,10 +76,7 @@
 //   vtkCommand::InteractionEvent (on vtkWidgetEvent::Move)
 // </pre>
 
-// .SECTION Caveats
-// Note that in some cases the widget can be picked even when it is "behind"
-// other actors.  This is an intended feature and not a bug.
-// 
+//
 // This class, and the affiliated vtkBoxRepresentation, are second generation
 // VTK widgets. An earlier version of this functionality was defined in the
 // class vtkBoxWidget.
@@ -114,7 +111,7 @@ public:
   // so it can be added to the renderer independent of the widget.
   void SetRepresentation(vtkBoxRepresentation *r)
     {this->Superclass::SetWidgetRepresentation(reinterpret_cast<vtkWidgetRepresentation*>(r));}
-  
+
   // Description:
   // Control the behavior of the widget (i.e., how it processes
   // events). Translation, rotation, scaling and face movement can all be enabled and
@@ -148,7 +145,7 @@ protected:
   int WidgetState;
   enum _WidgetState {Start=0,Active};
 //ETX
-  
+
   // These methods handle events
   static void SelectAction(vtkAbstractWidget*);
   static void EndSelectAction(vtkAbstractWidget*);
@@ -165,5 +162,5 @@ private:
   vtkBoxWidget2(const vtkBoxWidget2&);  //Not implemented
   void operator=(const vtkBoxWidget2&);  //Not implemented
 };
- 
+
 #endif

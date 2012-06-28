@@ -25,6 +25,7 @@
 #include "vtkObjectFactory.h"
 #include "vtkParametricFunctionSource.h"
 #include "vtkParametricSpline.h"
+#include "vtkPickingManager.h"
 #include "vtkPlaneSource.h"
 #include "vtkPolyData.h"
 #include "vtkPolyDataMapper.h"
@@ -83,7 +84,8 @@ vtkSplineWidget::vtkSplineWidget()
     this->HandleGeometry[i]->SetThetaResolution(16);
     this->HandleGeometry[i]->SetPhiResolution(8);
     vtkPolyDataMapper* handleMapper = vtkPolyDataMapper::New();
-    handleMapper->SetInput(this->HandleGeometry[i]->GetOutput());
+    handleMapper->SetInputConnection(
+      this->HandleGeometry[i]->GetOutputPort());
     this->Handle[i] = vtkActor::New();
     this->Handle[i]->SetMapper(handleMapper);
     handleMapper->Delete();
@@ -114,7 +116,8 @@ vtkSplineWidget::vtkSplineWidget()
   this->ParametricFunctionSource->Update();
 
   vtkPolyDataMapper* lineMapper = vtkPolyDataMapper::New();
-  lineMapper->SetInput( this->ParametricFunctionSource->GetOutput() ) ;
+  lineMapper->SetInputConnection(
+    this->ParametricFunctionSource->GetOutputPort());
   lineMapper->ImmediateModeRenderingOn();
   lineMapper->SetResolveCoincidentTopologyToPolygonOffset();
 
@@ -365,6 +368,14 @@ void vtkSplineWidget::SetEnabled(int enabling)
   this->Interactor->Render();
 }
 
+//----------------------------------------------------------------------
+void vtkSplineWidget::RegisterPickers()
+{
+  this->Interactor->GetPickingManager()->AddPicker(this->HandlePicker, this);
+  this->Interactor->GetPickingManager()->AddPicker(this->LinePicker, this);
+}
+
+//----------------------------------------------------------------------
 void vtkSplineWidget::ProcessEventsHandler(vtkObject* vtkNotUsed(object),
                                   unsigned long event,
                                   void* clientdata,
@@ -609,17 +620,25 @@ void vtkSplineWidget::OnLeftButtonDown()
 
   // Okay, we can process this. Try to pick handles first;
   // if no handles picked, then try to pick the line.
-  vtkAssemblyPath *path;
-  this->HandlePicker->Pick(X,Y,0.0,this->CurrentRenderer);
-  path = this->HandlePicker->GetPath();
+  vtkAssemblyPath* path =
+    this->Interactor->GetAssemblyPath(X, Y, 0.,
+                                      this->HandlePicker,
+                                      this->CurrentRenderer,
+                                      this,
+                                      this->ManagesPicking);
+
   if ( path != NULL )
     {
     this->CurrentHandleIndex = this->HighlightHandle(path->GetFirstNode()->GetViewProp());
     }
   else
     {
-    this->LinePicker->Pick(X,Y,0.0,this->CurrentRenderer);
-    path = this->LinePicker->GetPath();
+    path = this->Interactor->GetAssemblyPath(X, Y, 0.,
+                                             this->LinePicker,
+                                             this->CurrentRenderer,
+                                             this,
+                                             this->ManagesPicking);
+
     if ( path != NULL )
       {
       this->HighlightLine(1);
@@ -682,13 +701,21 @@ void vtkSplineWidget::OnMiddleButtonDown()
 
   // Okay, we can process this. Try to pick handles first;
   // if no handles picked, then try to pick the line.
-  vtkAssemblyPath *path;
-  this->HandlePicker->Pick(X,Y,0.0,this->CurrentRenderer);
-  path = this->HandlePicker->GetPath();
+  vtkAssemblyPath* path =
+    this->Interactor->GetAssemblyPath(X, Y, 0.,
+                                      this->HandlePicker,
+                                      this->CurrentRenderer,
+                                      this,
+                                      this->ManagesPicking);
+
   if ( path == NULL )
     {
-    this->LinePicker->Pick(X,Y,0.0,this->CurrentRenderer);
-    path = this->LinePicker->GetPath();
+    path = this->Interactor->GetAssemblyPath(X, Y, 0.,
+                                             this->LinePicker,
+                                             this->CurrentRenderer,
+                                             this,
+                                             this->ManagesPicking);
+
     if ( path == NULL )
       {
       this->State = vtkSplineWidget::Outside;
@@ -755,10 +782,13 @@ void vtkSplineWidget::OnRightButtonDown()
     this->State = vtkSplineWidget::Scaling;
     }
 
-  vtkAssemblyPath *path;
-  this->HandlePicker->Pick(X,Y,0.0,this->CurrentRenderer);
-  path = this->HandlePicker->GetPath();
-  
+  vtkAssemblyPath* path =
+    this->Interactor->GetAssemblyPath(X, Y, 0.,
+                                      this->HandlePicker,
+                                      this->CurrentRenderer,
+                                      this,
+                                      this->ManagesPicking);
+
   if ( path != NULL )
     {
     switch ( this->State )
@@ -785,8 +815,12 @@ void vtkSplineWidget::OnRightButtonDown()
       return;
       }
     // try to insert or scale so pick the line
-    this->LinePicker->Pick(X,Y,0.0,this->CurrentRenderer);
-    path = this->LinePicker->GetPath();
+    path = this->Interactor->GetAssemblyPath(X, Y, 0.,
+                                             this->LinePicker,
+                                             this->CurrentRenderer,
+                                             this,
+                                             this->ManagesPicking);
+
     if ( path != NULL )
       {
       this->HighlightLine(1);
@@ -1155,7 +1189,7 @@ void vtkSplineWidget::PlaceWidget(double bds[6])
 
 void vtkSplineWidget::SetProjectionPosition(double position)
 {
-  this->ProjectionPosition = position; 
+  this->ProjectionPosition = position;
   if ( this->ProjectToPlane )
     {
     this->ProjectPointsToPlane();
@@ -1183,7 +1217,7 @@ void vtkSplineWidget::SetNumberOfHandles(int npts)
     vtkGenericWarningMacro(<<"vtkSplineWidget: minimum of 2 points required.");
     return;
     }
-      
+
   double radius = this->HandleGeometry[0]->GetRadius();
   this->Initialize();
 
@@ -1202,7 +1236,8 @@ void vtkSplineWidget::SetNumberOfHandles(int npts)
     this->HandleGeometry[i]->SetThetaResolution(16);
     this->HandleGeometry[i]->SetPhiResolution(8);
     vtkPolyDataMapper* handleMapper = vtkPolyDataMapper::New();
-    handleMapper->SetInput(this->HandleGeometry[i]->GetOutput());
+    handleMapper->SetInputConnection(
+      this->HandleGeometry[i]->GetOutputPort());
     this->Handle[i] = vtkActor::New();
     this->Handle[i]->SetMapper(handleMapper);
     handleMapper->Delete();

@@ -14,10 +14,12 @@
 =========================================================================*/
 #include "vtkSphereHandleRepresentation.h"
 #include "vtkSphereSource.h"
+#include "vtkPickingManager.h"
 #include "vtkPolyDataMapper.h"
 #include "vtkActor.h"
 #include "vtkCellPicker.h"
 #include "vtkRenderer.h"
+#include "vtkRenderWindowInteractor.h"
 #include "vtkObjectFactory.h"
 #include "vtkProperty.h"
 #include "vtkAssemblyPath.h"
@@ -35,14 +37,14 @@ vtkSphereHandleRepresentation::vtkSphereHandleRepresentation()
 {
   // Initialize state
   this->InteractionState = vtkHandleRepresentation::Outside;
-  
+
   // Represent the line
   this->Sphere = vtkSphereSource::New();
   this->Sphere->SetThetaResolution(16);
   this->Sphere->SetPhiResolution(8);
-  
+
   this->Mapper = vtkPolyDataMapper::New();
-  this->Mapper->SetInput(this->Sphere->GetOutput());
+  this->Mapper->SetInputConnection(this->Sphere->GetOutputPort());
 
   // Set up the initial properties
   this->CreateDefaultProperties();
@@ -59,16 +61,16 @@ vtkSphereHandleRepresentation::vtkSphereHandleRepresentation()
 
   // Override superclass'
   this->PlaceFactor = 1.0;
-  
+
   // The size of the hot spot
   this->HotSpotSize = 0.05;
   this->WaitingForMotion = 0;
   this->ConstraintAxis = -1;
-  
+
   // Current handle size
   this->HandleSize = 15.0; //in pixels
   this->CurrentHandleSize = this->HandleSize;
-  
+
   // Translation control
   this->TranslationMode = 1;
 }
@@ -84,6 +86,13 @@ vtkSphereHandleRepresentation::~vtkSphereHandleRepresentation()
   this->SelectedProperty->Delete();
 }
 
+//----------------------------------------------------------------------
+void vtkSphereHandleRepresentation::RegisterPickers()
+{
+  this->Renderer->GetRenderWindow()->GetInteractor()->GetPickingManager()
+    ->AddPicker(this->CursorPicker, this);
+}
+
 //-------------------------------------------------------------------------
 void vtkSphereHandleRepresentation::PlaceWidget(double bds[6])
 {
@@ -91,7 +100,7 @@ void vtkSphereHandleRepresentation::PlaceWidget(double bds[6])
   double bounds[6], center[3];
 
   this->AdjustBounds(bds, bounds, center);
-  
+
 //  this->Sphere->SetModelBounds(bounds);
   this->SetWorldPosition(center);
 
@@ -129,7 +138,7 @@ double* vtkSphereHandleRepresentation::GetBounds()
   double center[3];
   double radius = this->Sphere->GetRadius();
   this->Sphere->GetCenter(center);
-  
+
   bounds[0] = this->PlaceFactor*(center[0]-radius);
   bounds[1] = this->PlaceFactor*(center[0]+radius);
   bounds[2] = this->PlaceFactor*(center[1]-radius);
@@ -165,8 +174,11 @@ void vtkSphereHandleRepresentation::SetHandleSize(double size)
 int vtkSphereHandleRepresentation::ComputeInteractionState(int X, int Y, int vtkNotUsed(modify))
 {
   this->VisibilityOn(); //actor must be on to be picked
-  this->CursorPicker->Pick(X,Y,0.0,this->Renderer);
-  vtkAssemblyPath *path = this->CursorPicker->GetPath();
+
+  vtkAssemblyPath* path =
+    this->Renderer->GetRenderWindow()->GetInteractor()->GetAssemblyPath(
+      X, Y, 0., this->CursorPicker, this->Renderer, this, this->ManagesPicking);
+
   if ( path != NULL )
     {
 //    this->InteractionState = vtkHandleRepresentation::Nearby;
@@ -196,7 +208,7 @@ int vtkSphereHandleRepresentation::DetermineConstraintAxis(int constraint, doubl
     {
     return constraint;
     }
-  
+
   // Okay, figure out constraint. First see if the choice is
   // outside the hot spot
   if ( ! this->WaitingForMotion )
@@ -217,7 +229,7 @@ int vtkSphereHandleRepresentation::DetermineConstraintAxis(int constraint, doubl
       return -1;
       }
     }
-  else if ( this->WaitingForMotion && x ) 
+  else if ( this->WaitingForMotion && x )
     {
     double v[3];
     this->WaitingForMotion = 0;
@@ -243,9 +255,11 @@ void vtkSphereHandleRepresentation::StartWidgetInteraction(double startEventPos[
   this->LastEventPosition[0] = startEventPos[0];
   this->LastEventPosition[1] = startEventPos[1];
 
-  vtkAssemblyPath *path;
-  this->CursorPicker->Pick(startEventPos[0],startEventPos[1],0.0,this->Renderer);
-  path = this->CursorPicker->GetPath();
+  vtkAssemblyPath* path =
+    this->Renderer->GetRenderWindow()->GetInteractor()->GetAssemblyPath(
+      startEventPos[0], startEventPos[1], 0.,
+      this->CursorPicker, this->Renderer, this, this->ManagesPicking);
+
   if ( path != NULL )
     {
 //    this->InteractionState = vtkHandleRepresentation::Nearby;
@@ -276,11 +290,11 @@ void vtkSphereHandleRepresentation::WidgetInteraction(double eventPos[2])
 
   // Compute the two points defining the motion vector
   vtkInteractorObserver::ComputeWorldToDisplay(this->Renderer,
-                                               this->LastPickPosition[0], 
+                                               this->LastPickPosition[0],
                                                this->LastPickPosition[1],
                                                this->LastPickPosition[2], focalPoint);
   z = focalPoint[2];
-  vtkInteractorObserver::ComputeDisplayToWorld(this->Renderer, this->LastEventPosition[0], 
+  vtkInteractorObserver::ComputeDisplayToWorld(this->Renderer, this->LastEventPosition[0],
                                                this->LastEventPosition[1], z, prevPickPoint);
   vtkInteractorObserver::ComputeDisplayToWorld(this->Renderer, eventPos[0], eventPos[1], z, pickPoint);
 
@@ -290,7 +304,7 @@ void vtkSphereHandleRepresentation::WidgetInteraction(double eventPos[2])
     {
     if ( !this->WaitingForMotion || this->WaitCount++ > 3 )
       {
-      this->ConstraintAxis = 
+      this->ConstraintAxis =
         this->DetermineConstraintAxis(this->ConstraintAxis,pickPoint);
       if ( this->InteractionState == vtkHandleRepresentation::Selecting && !this->TranslationMode )
         {
@@ -336,7 +350,7 @@ void vtkSphereHandleRepresentation::MoveFocus(double *p1, double *p2)
     focus[1] += v[1];
     focus[2] += v[2];
     }
-  
+
   this->SetWorldPosition(focus);
 }
 
@@ -349,7 +363,7 @@ void vtkSphereHandleRepresentation::Translate(double *p1, double *p2)
   v[0] = p2[0] - p1[0];
   v[1] = p2[1] - p1[1];
   v[2] = p2[2] - p1[2];
-  
+
   double *pos = this->Sphere->GetCenter();
   double newFocus[3];
 
@@ -363,7 +377,7 @@ void vtkSphereHandleRepresentation::Translate(double *p1, double *p2)
         }
       }
     }
-  
+
   for (int i=0; i<3; i++)
     {
     newFocus[i] = pos[i] + v[i];
@@ -399,7 +413,7 @@ void vtkSphereHandleRepresentation::Scale(double *p1, double *p2, double eventPo
   double *bounds = this->GetBounds();
 
   // Compute the scale factor
-  double sf = vtkMath::Norm(v) / 
+  double sf = vtkMath::Norm(v) /
     sqrt( (bounds[1]-bounds[0])*(bounds[1]-bounds[0]) +
           (bounds[3]-bounds[2])*(bounds[3]-bounds[2]) +
           (bounds[5]-bounds[4])*(bounds[5]-bounds[4]));
@@ -412,10 +426,10 @@ void vtkSphereHandleRepresentation::Scale(double *p1, double *p2, double eventPo
     {
     sf = 1.0 - sf;
     }
-  
+
   this->CurrentHandleSize *= sf;
   this->CurrentHandleSize = (this->CurrentHandleSize < 0.001 ? 0.001 : this->CurrentHandleSize);
-  
+
   this->SizeBounds();
 }
 
@@ -446,7 +460,7 @@ void vtkSphereHandleRepresentation::CreateDefaultProperties()
 void vtkSphereHandleRepresentation::BuildRepresentation()
 {
   // The net effect is to resize the handle
-  if ( this->GetMTime() > this->BuildTime || 
+  if ( this->GetMTime() > this->BuildTime ||
        (this->Renderer && this->Renderer->GetVTKWindow() &&
         this->Renderer->GetVTKWindow()->GetMTime() > this->BuildTime) )
     {
@@ -465,7 +479,7 @@ void vtkSphereHandleRepresentation::BuildRepresentation()
 //----------------------------------------------------------------------
 void vtkSphereHandleRepresentation::ShallowCopy(vtkProp *prop)
 {
-  vtkSphereHandleRepresentation *rep = 
+  vtkSphereHandleRepresentation *rep =
     vtkSphereHandleRepresentation::SafeDownCast(prop);
   if ( rep )
     {
@@ -480,7 +494,7 @@ void vtkSphereHandleRepresentation::ShallowCopy(vtkProp *prop)
 //----------------------------------------------------------------------
 void vtkSphereHandleRepresentation::DeepCopy(vtkProp *prop)
 {
-  vtkSphereHandleRepresentation *rep = 
+  vtkSphereHandleRepresentation *rep =
     vtkSphereHandleRepresentation::SafeDownCast(prop);
   if ( rep )
     {
@@ -529,9 +543,9 @@ int vtkSphereHandleRepresentation::HasTranslucentPolygonalGeometry()
 void vtkSphereHandleRepresentation::SetProperty(vtkProperty * p)
 {
   vtkSetObjectBodyMacro(Property, vtkProperty, p);
-  if (p) 
-    { 
-    this->Actor->SetProperty( p ); 
+  if (p)
+    {
+    this->Actor->SetProperty( p );
     }
 }
 
@@ -540,7 +554,7 @@ void vtkSphereHandleRepresentation::PrintSelf(ostream& os, vtkIndent indent)
 {
   //Superclass typedef defined in vtkTypeMacro() found in vtkSetGet.h
   this->Superclass::PrintSelf(os,indent);
-  
+
   os << indent << "Hot Spot Size: " << this->HotSpotSize << "\n";
   if ( this->Property )
     {

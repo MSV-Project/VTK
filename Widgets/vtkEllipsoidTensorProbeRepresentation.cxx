@@ -20,7 +20,9 @@
 #include "vtkDoubleArray.h"
 #include "vtkActor.h"
 #include "vtkRenderer.h"
+#include "vtkRenderWindowInteractor.h"
 #include "vtkObjectFactory.h"
+#include "vtkPickingManager.h"
 #include "vtkPolyDataNormals.h"
 #include "vtkRenderWindow.h"
 #include "vtkTensorGlyph.h"
@@ -68,17 +70,19 @@ vtkEllipsoidTensorProbeRepresentation
 
   this->TensorGlypher = vtkTensorGlyph::New();
   this->TensorGlypher->SetInput(this->TensorSource);
-  this->TensorGlypher->SetSource(sphere->GetOutput());
+  this->TensorGlypher->SetSourceConnection(sphere->GetOutputPort());
   this->TensorGlypher->SetScaleFactor(10);
   this->TensorGlypher->ClampScalingOn();
   sphere->Delete();
 
   this->PolyDataNormals = vtkPolyDataNormals::New();
   this->PolyDataNormals->AutoOrientNormalsOn();
-  this->PolyDataNormals->SetInput(this->TensorGlypher->GetOutput());
+  this->PolyDataNormals->SetInputConnection(
+    this->TensorGlypher->GetOutputPort());
 
   this->EllipsoidMapper = vtkPolyDataMapper::New();
-  this->EllipsoidMapper->SetInput(this->PolyDataNormals->GetOutput());
+  this->EllipsoidMapper->SetInputConnection(
+    this->PolyDataNormals->GetOutputPort());
   this->EllipsoidActor = vtkActor::New();
   this->EllipsoidActor->SetMapper(this->EllipsoidMapper);
 
@@ -145,6 +149,13 @@ void vtkEllipsoidTensorProbeRepresentation
 }
 
 //----------------------------------------------------------------------
+void vtkEllipsoidTensorProbeRepresentation::RegisterPickers()
+{
+  this->Renderer->GetRenderWindow()->GetInteractor()->GetPickingManager()
+    ->AddPicker(this->CellPicker, this);
+}
+
+//----------------------------------------------------------------------
 int vtkEllipsoidTensorProbeRepresentation
 ::RenderOpaqueGeometry(vtkViewport *viewport)
 {
@@ -157,8 +168,13 @@ int vtkEllipsoidTensorProbeRepresentation
 int vtkEllipsoidTensorProbeRepresentation::SelectProbe( int pos[2] )
 {
   this->VisibilityOn(); //actor must be on to be picked
-  this->CellPicker->Pick(pos[0],pos[1],0.0,this->Renderer);
-  return this->CellPicker->GetPath() ? 1 : 0;
+
+  vtkAssemblyPath* path =
+    this->Renderer->GetRenderWindow()->GetInteractor()->GetAssemblyPath(
+      pos[0], pos[1], 0.,
+      this->CellPicker, this->Renderer, this, this->ManagesPicking);
+
+  return path ? 1 : 0;
 }
 
 //----------------------------------------------------------------------

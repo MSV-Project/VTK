@@ -157,6 +157,9 @@ protected:
   // For picking the button
   vtkCellPicker *Picker;
 
+  // Register internal Pickers within PickingManager
+  virtual void RegisterPickers();
+
 private:
   vtkTexturedButtonRepresentation(const vtkTexturedButtonRepresentation&);  //Not implemented
   void operator=(const vtkTexturedButtonRepresentation&);  //Not implemented
