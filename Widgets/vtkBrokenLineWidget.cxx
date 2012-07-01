@@ -24,6 +24,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include "vtkLineSource.h"
 #include "vtkMath.h"
 #include "vtkObjectFactory.h"
+#include "vtkPickingManager.h"
 #include "vtkPlaneSource.h"
 #include "vtkPolyData.h"
 #include "vtkPolyDataMapper.h"
@@ -83,7 +84,7 @@ vtkBrokenLineWidget::vtkBrokenLineWidget()
     this->HandleGeometry[i]->SetThetaResolution( 16 );
     this->HandleGeometry[i]->SetPhiResolution( 8 );
     vtkPolyDataMapper* handleMapper = vtkPolyDataMapper::New();
-    handleMapper->SetInput( this->HandleGeometry[i]->GetOutput() );
+    handleMapper->SetInputConnection(this->HandleGeometry[i]->GetOutputPort() );
     this->Handle[i] = vtkActor::New();
     this->Handle[i]->SetMapper( handleMapper );
     handleMapper->Delete();
@@ -473,6 +474,13 @@ void vtkBrokenLineWidget::ProjectPointsToOrthoPlane()
     }
 }
 
+//------------------------------------------------------------------------------
+void vtkBrokenLineWidget::RegisterPickers()
+{
+  this->Interactor->GetPickingManager()->AddPicker(this->HandlePicker, this);
+  this->Interactor->GetPickingManager()->AddPicker(this->LinePicker, this);
+}
+
 void vtkBrokenLineWidget::BuildRepresentation()
 {
   // Get points array from line source
@@ -548,17 +556,26 @@ void vtkBrokenLineWidget::OnLeftButtonDown()
 
   // Okay, we can process this. Try to pick handles first;
   // if no handles picked, then try to pick the line.
-  vtkAssemblyPath *path;
-  this->HandlePicker->Pick( X, Y, 0., this->CurrentRenderer );
-  path = this->HandlePicker->GetPath();
+  vtkAssemblyPath* path =
+    this->Interactor->GetAssemblyPath(X, Y, 0.,
+                                      this->HandlePicker,
+                                      this->CurrentRenderer,
+                                      this,
+                                      this->ManagesPicking);
+
+
   if ( path != NULL )
     {
     this->CurrentHandleIndex = this->HighlightHandle( path->GetFirstNode()->GetViewProp() );
     }
   else
     {
-    this->LinePicker->Pick( X, Y, 0., this->CurrentRenderer );
-    path = this->LinePicker->GetPath();
+    path = this->Interactor->GetAssemblyPath(X, Y, 0.,
+                                             this->LinePicker,
+                                             this->CurrentRenderer,
+                                             this,
+                                             this->ManagesPicking);
+
     if ( path != NULL )
       {
       this->HighlightLine( 1 );
@@ -621,13 +638,21 @@ void vtkBrokenLineWidget::OnMiddleButtonDown()
 
   // Okay, we can process this. Try to pick handles first;
   // if no handles picked, then try to pick the line.
-  vtkAssemblyPath *path;
-  this->HandlePicker->Pick( X, Y, 0., this->CurrentRenderer );
-  path = this->HandlePicker->GetPath();
+  vtkAssemblyPath* path =
+    this->Interactor->GetAssemblyPath(X, Y, 0.,
+                                      this->HandlePicker,
+                                      this->CurrentRenderer,
+                                      this,
+                                      this->ManagesPicking);
+
   if ( path == NULL )
     {
-    this->LinePicker->Pick( X, Y, 0., this->CurrentRenderer );
-    path = this->LinePicker->GetPath();
+      path = this->Interactor->GetAssemblyPath(X, Y, 0.,
+                                               this->LinePicker,
+                                               this->CurrentRenderer,
+                                               this,
+                                               this->ManagesPicking);
+
     if ( path == NULL )
       {
       this->State = vtkBrokenLineWidget::Outside;
@@ -694,10 +719,13 @@ void vtkBrokenLineWidget::OnRightButtonDown()
     this->State = vtkBrokenLineWidget::Scaling;
     }
 
-  vtkAssemblyPath *path;
-  this->HandlePicker->Pick( X, Y, 0., this->CurrentRenderer );
-  path = this->HandlePicker->GetPath();
-  
+  vtkAssemblyPath* path =
+    this->Interactor->GetAssemblyPath(X, Y, 0.,
+                                      this->HandlePicker,
+                                      this->CurrentRenderer,
+                                      this,
+                                      this->ManagesPicking);
+
   if ( path != NULL )
     {
     switch ( this->State )
@@ -723,9 +751,14 @@ void vtkBrokenLineWidget::OnRightButtonDown()
       this->State = vtkBrokenLineWidget::Outside;
       return;
       }
+
     // try to insert or scale so pick the line
-    this->LinePicker->Pick( X, Y, 0., this->CurrentRenderer );
-    path = this->LinePicker->GetPath();
+    path = this->Interactor->GetAssemblyPath(X, Y, 0.,
+                                             this->LinePicker,
+                                             this->CurrentRenderer,
+                                             this,
+                                             this->ManagesPicking);
+
     if ( path != NULL )
       {
       this->HighlightLine( 1 );
@@ -1050,7 +1083,7 @@ void vtkBrokenLineWidget::PlaceWidget( double bds[6])
 {
   double bounds[6], center[3];
   this->AdjustBounds( bds, bounds, center );
-      
+
   if ( this->ProjectToPlane )
     {
     this->ProjectPointsToPlane();
@@ -1092,7 +1125,7 @@ void vtkBrokenLineWidget::PlaceWidget( double bds[6])
 
 void vtkBrokenLineWidget::SetProjectionPosition( double position )
 {
-  this->ProjectionPosition = position; 
+  this->ProjectionPosition = position;
   if ( this->ProjectToPlane )
     {
     this->ProjectPointsToPlane();
@@ -1120,7 +1153,7 @@ void vtkBrokenLineWidget::SetNumberOfHandles( int npts )
     vtkGenericWarningMacro(<<"Minimum of 2 points required to define a broken line.");
     return;
     }
-      
+
   double radius = this->HandleGeometry[0]->GetRadius();
   this->Initialize();
 
@@ -1136,7 +1169,7 @@ void vtkBrokenLineWidget::SetNumberOfHandles( int npts )
     this->HandleGeometry[i]->SetThetaResolution( 16 );
     this->HandleGeometry[i]->SetPhiResolution( 8 );
     vtkPolyDataMapper* handleMapper = vtkPolyDataMapper::New();
-    handleMapper->SetInput( this->HandleGeometry[i]->GetOutput() );
+    handleMapper->SetInputConnection( this->HandleGeometry[i]->GetOutputPort() );
     this->Handle[i] = vtkActor::New();
     this->Handle[i]->SetMapper( handleMapper );
     handleMapper->Delete();
@@ -1150,7 +1183,7 @@ void vtkBrokenLineWidget::SetNumberOfHandles( int npts )
     {
     if ( ! this->CurrentRenderer )
       {
-      this->SetCurrentRenderer( 
+      this->SetCurrentRenderer(
                                this->Interactor->FindPokedRenderer(
                                                                    this->Interactor->GetLastEventPosition()[0],
                                                                    this->Interactor->GetLastEventPosition()[1]) );
@@ -1329,13 +1362,13 @@ void vtkBrokenLineWidget::EraseHandle( const int& index )
 void vtkBrokenLineWidget::InitializeHandles( vtkPoints* points )
 {
   if ( ! points )
-    { 
+    {
     return;
     }
 
   int npts = points->GetNumberOfPoints();
   if ( npts < 2 )
-    { 
+    {
     return;
     }
 

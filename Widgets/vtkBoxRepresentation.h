@@ -75,7 +75,7 @@ public:
   void GetPlanes(vtkPlanes *planes);
 
   // Description:
-  // Set/Get the InsideOut flag. This data memeber is used in conjunction
+  // Set/Get the InsideOut flag. This data member is used in conjunction
   // with the GetPlanes() method. When off, the normals point out of the
   // box. When on, the normals point into the hexahedron.  InsideOut is off
   // by default.
@@ -93,9 +93,9 @@ public:
 
   // Description:
   // Set the position, scale and orientation of the box widget using the
-  // transform specified. Note that the transformation is relative to 
+  // transform specified. Note that the transformation is relative to
   // where PlaceWidget() was initially called (i.e., the original bounding
-  // box). 
+  // box).
   virtual void SetTransform(vtkTransform* t);
 
   // Description:
@@ -110,26 +110,26 @@ public:
   void GetPolyData(vtkPolyData *pd);
 
   // Description:
-  // Get the handle properties (the little balls are the handles). The 
-  // properties of the handles, when selected or normal, can be 
+  // Get the handle properties (the little balls are the handles). The
+  // properties of the handles, when selected or normal, can be
   // specified.
   vtkGetObjectMacro(HandleProperty,vtkProperty);
   vtkGetObjectMacro(SelectedHandleProperty,vtkProperty);
 
   // Description:
-  // Get the face properties (the faces of the box). The 
-  // properties of the face when selected and normal can be 
+  // Get the face properties (the faces of the box). The
+  // properties of the face when selected and normal can be
   // set.
   vtkGetObjectMacro(FaceProperty,vtkProperty);
   vtkGetObjectMacro(SelectedFaceProperty,vtkProperty);
-  
+
   // Description:
-  // Get the outline properties (the outline of the box). The 
-  // properties of the outline when selected and normal can be 
+  // Get the outline properties (the outline of the box). The
+  // properties of the outline when selected and normal can be
   // set.
   vtkGetObjectMacro(OutlineProperty,vtkProperty);
   vtkGetObjectMacro(SelectedOutlineProperty,vtkProperty);
-  
+
   // Description:
   // Control the representation of the outline. This flag enables
   // face wires. By default face wires are off.
@@ -152,7 +152,7 @@ public:
   // actor visibility.
   virtual void HandlesOn();
   virtual void HandlesOff();
-  
+
   // Description:
   // These are methods that satisfy vtkWidgetRepresentation's API.
   virtual void PlaceWidget(double bounds[6]);
@@ -161,14 +161,14 @@ public:
   virtual void StartWidgetInteraction(double e[2]);
   virtual void WidgetInteraction(double e[2]);
   virtual double *GetBounds();
-  
+
   // Description:
   // Methods supporting, and required by, the rendering process.
   virtual void ReleaseGraphicsResources(vtkWindow*);
   virtual int  RenderOpaqueGeometry(vtkViewport*);
   virtual int  RenderTranslucentPolygonalGeometry(vtkViewport*);
   virtual int  HasTranslucentPolygonalGeometry();
-  
+
 //BTX - used to manage the state of the widget
   enum {Outside=0,MoveF0,MoveF1,MoveF2,MoveF3,MoveF4,MoveF5,Translating,Rotating,Scaling};
 //ETX
@@ -189,7 +189,7 @@ protected:
 
   // Manage how the representation appears
   double LastEventPosition[3];
-  
+
   // the hexahedron (6 faces)
   vtkActor          *HexActor;
   vtkPolyDataMapper *HexMapper;
@@ -212,7 +212,7 @@ protected:
   void HighlightOutline(int highlight);
   virtual void ComputeNormals();
   virtual void SizeHandles();
-  
+
   // wireframe outline
   vtkActor          *HexOutline;
   vtkPolyDataMapper *OutlineMapper;
@@ -224,13 +224,16 @@ protected:
   vtkActor *CurrentHandle;
   int      CurrentHexFace;
   vtkCellPicker *LastPicker;
-  
+
+  // Register internal Pickers within PickingManager
+  virtual void RegisterPickers();
+
   // Transform the hexahedral points (used for rotations)
   vtkTransform *Transform;
-  
+
   // Support GetBounds() method
   vtkBox *BoundingBox;
-  
+
   // Properties used to control the appearance of selected objects and
   // the manipulator in general.
   vtkProperty *HandleProperty;
@@ -240,13 +243,13 @@ protected:
   vtkProperty *OutlineProperty;
   vtkProperty *SelectedOutlineProperty;
   virtual void CreateDefaultProperties();
-  
+
   // Control the orientation of the normals
   int InsideOut;
   int OutlineFaceWires;
   int OutlineCursorWires;
   void GenerateOutline();
-  
+
   // Helper methods
   virtual void Translate(double *p1, double *p2);
   virtual void Scale(double *p1, double *p2, int X, int Y);
@@ -265,12 +268,12 @@ protected:
 
   //"dir" is the direction in which the face can be moved i.e. the axis passing
   //through the center
-  void MoveFace(double *p1, double *p2, double *dir, 
+  void MoveFace(double *p1, double *p2, double *dir,
                 double *x1, double *x2, double *x3, double *x4,
                 double *x5);
   //Helper method to obtain the direction in which the face is to be moved.
   //Handles special cases where some of the scale factors are 0.
-  void GetDirection(const double Nx[3],const double Ny[3], 
+  void GetDirection(const double Nx[3],const double Ny[3],
                     const double Nz[3], double dir[3]);
 
 

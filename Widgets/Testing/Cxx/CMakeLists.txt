@@ -47,6 +47,10 @@ SET(MyTests
 #  vtkSphereHandleRepresentationTest1.cxx
 #  vtkPolygonalHandleRepresentation3DTest1.cxx
 #  vtkOrientedPolygonalHandleRepresentation3DTest1.cxx
+
+  TestPickingManagerWidgets.cxx # Test for the picking manager using different widgets
+  TestPickingManagerSeedWidget.cxx # Test picking manager in a scene full of seeds (Perf + Interaction)
+ 
   )
 
 IF (VTK_DATA_ROOT)

@@ -54,10 +54,6 @@
 // and unselected properties); the outline (selected and unselected
 // properties); and the edges. The edges may also be tubed or not.
 
-// .SECTION Caveats
-// Note that the widget can be picked even when it is "behind"
-// other actors.  This is an intended feature and not a bug.
-
 // .SECTION See Also
 // vtk3DWidget vtkBoxWidget vtkPlaneWidget vtkLineWidget vtkPointWidget
 // vtkSphereWidget vtkImagePlaneWidget
@@ -121,7 +117,7 @@ public:
   // Force the plane widget to be aligned with one of the x-y-z axes.
   // If one axis is set on, the other two will be set off.
   // Remember that when the state changes, a ModifiedEvent is invoked.
-  // This can be used to snap the plane to the axes if it is orginally
+  // This can be used to snap the plane to the axes if it is originally
   // not aligned.
   void SetNormalToXAxis(int);
   vtkGetMacro(NormalToXAxis,int);
@@ -325,6 +321,9 @@ protected:
 
   // Do the picking
   vtkCellPicker *Picker;
+
+  // Register internal Pickers within PickingManager
+  virtual void RegisterPickers();
 
   // Transform the normal (used for rotation)
   vtkTransform *Transform;

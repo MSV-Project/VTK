@@ -60,6 +60,7 @@ IF(VTK_USE_DISPLAY)
     TestOpacity.cxx
     TestOpenGLPolyDataMapper.cxx
     TestOSConeCxx.cxx
+    TestPickingManager.cxx
     TestPOVExporter.cxx
     TestResetCameraVerticalAspectRatio.cxx
     TestResetCameraVerticalAspectRatioParallel.cxx

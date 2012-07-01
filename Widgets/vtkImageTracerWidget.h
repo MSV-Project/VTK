@@ -26,7 +26,7 @@
 // 1) left button click over the image, hold and drag draws a free hand line.
 // 2) left button click and release erases the widget line,
 // if it exists, and repositions the first handle.
-// 3) middle button click starts a snap drawn line.  The line is terminated by 
+// 3) middle button click starts a snap drawn line.  The line is terminated by
 // clicking the middle button while depressing the ctrl key.
 // 4) when tracing a continuous or snap drawn line, if the last cursor position
 // is within a specified tolerance to the first handle, the widget line will form
@@ -37,7 +37,7 @@
 // be closed by repositioning the first and last points over one another.
 // 6) ctrl key + right button down on any handle will erase it: existing
 // snap drawn line segments are updated accordingly.  If the line was formed by
-// continous tracing, the line is deleted leaving one handle.
+// continuous tracing, the line is deleted leaving one handle.
 // 7) shift key + right button down on any snap drawn line segment will insert
 // a handle at the cursor position.  The line segment is split accordingly.
 
@@ -336,6 +336,9 @@ protected:
   vtkCellPicker *HandlePicker;
   vtkCellPicker *LinePicker;
   vtkAbstractPropPicker* CurrentPicker;
+
+  // Register internal Pickers within PickingManager
+  virtual void RegisterPickers();
 
   // Properties used to control the appearance of selected objects and
   // the manipulator in general.

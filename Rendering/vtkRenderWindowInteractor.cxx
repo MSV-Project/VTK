@@ -19,6 +19,7 @@
 #include "vtkGraphicsFactory.h"
 #include "vtkInteractorStyleSwitch.h"
 #include "vtkMath.h"
+#include "vtkPickingManager.h"
 #include "vtkPropPicker.h"
 #include "vtkRenderWindow.h"
 #include "vtkRenderer.h"
@@ -86,6 +87,9 @@ vtkRenderWindowInteractor::vtkRenderWindowInteractor()
   this->EventSize[0] = 0;
   this->EventSize[1] = 0;
 
+  this->PickingManager = 0;
+  this->SetPickingManager(this->CreateDefaultPickingManager());
+
   this->Size[0] = 0;
   this->Size[1] = 0;
   
@@ -132,6 +136,7 @@ vtkRenderWindowInteractor::~vtkRenderWindowInteractor()
     }
   delete this->TimerMap;
   
+  this->SetPickingManager(0);
   this->SetRenderWindow(0);
 }
 
@@ -258,6 +263,62 @@ void vtkRenderWindowInteractor::ExitCallback()
     {
     this->TerminateApp();
     }
+}
+
+//----------------------------------------------------------------------
+// Creates an instance of vtkPickingManager by default
+vtkPickingManager* vtkRenderWindowInteractor::CreateDefaultPickingManager()
+{
+  return vtkPickingManager::New();
+}
+
+//----------------------------------------------------------------------
+void vtkRenderWindowInteractor::SetPickingManager(vtkPickingManager* pm)
+{
+  if(this->PickingManager == pm)
+    {
+    return;
+    }
+
+  vtkPickingManager* tempPickingManager = this->PickingManager;
+  this->PickingManager = pm;
+  if (this->PickingManager)
+    {
+    this->PickingManager->Register(this);
+    pm->SetInteractor(this);
+    }
+
+  if(tempPickingManager)
+    {
+    tempPickingManager->SetInteractor(0);
+    tempPickingManager->UnRegister(this);
+    }
+
+  this->Modified();
+}
+
+//------------------------------------------------------------------------------
+vtkAssemblyPath* vtkRenderWindowInteractor::
+GetAssemblyPath(double X, double Y, double Z,
+                vtkAbstractPropPicker* picker,
+                vtkRenderer* renderer,
+                vtkObject* obj,
+                bool isManaged)
+{
+  if (isManaged && this->GetPickingManager()->GetEnabled())
+    {
+    // Return 0 when the Picker is not selected
+    if (!this->GetPickingManager()->Pick(picker, obj))
+      {
+      return 0;
+      }
+    }
+  else
+    {
+    picker->Pick(X, Y, Z, renderer);
+    }
+
+  return picker->GetPath();
 }
 
 //----------------------------------------------------------------------

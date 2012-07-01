@@ -27,6 +27,7 @@
 #include "vtkImageData.h"
 #include "vtkMath.h"
 #include "vtkObjectFactory.h"
+#include "vtkPickingManager.h"
 #include "vtkPolyData.h"
 #include "vtkPolyDataMapper.h"
 #include "vtkPolyLine.h"
@@ -70,7 +71,7 @@ vtkImageTracerWidget::vtkImageTracerWidget()
   this->NumberOfHandles = 0;
   this->LastX = 0;
   this->LastY = 0;
-  
+
   this->PropPicker = vtkPropPicker::New();
   this->PropPicker->PickFromListOn();
 
@@ -84,7 +85,8 @@ vtkImageTracerWidget::vtkImageTracerWidget()
   this->Transform = vtkTransform::New();
   this->TransformFilter->SetTransform(this->Transform);
   this->Transform->Identity();
-  this->TransformFilter->SetInput(this->HandleGenerator->GetOutput());
+  this->TransformFilter->SetInputConnection(
+    this->HandleGenerator->GetOutputPort());
   this->TransformFilter->Update();
 
   this->TemporaryHandlePoints = vtkFloatArray::New();
@@ -156,7 +158,7 @@ vtkImageTracerWidget::~vtkImageTracerWidget()
     delete [] this->HandleGeometry;
     this->HandleGeometry = NULL;
     }
- 
+
   if ( this->HandleProperty )
     {
     this->HandleProperty->Delete();
@@ -214,6 +216,14 @@ void vtkImageTracerWidget::SetViewProp(vtkProp* prop)
       this->PropPicker->AddPickList(this->ViewProp);
       }
     }
+}
+
+//------------------------------------------------------------------------------
+void vtkImageTracerWidget::RegisterPickers()
+{
+  this->Interactor->GetPickingManager()->AddPicker(this->PropPicker, this);
+  this->Interactor->GetPickingManager()->AddPicker(this->HandlePicker, this);
+  this->Interactor->GetPickingManager()->AddPicker(this->LinePicker, this);
 }
 
 void vtkImageTracerWidget::SetEnabled(int enabling)
@@ -559,7 +569,7 @@ void vtkImageTracerWidget::SetProjectionPosition(double position)
     pt[ this->ProjectionNormal ] = this->ProjectionPosition;
     this->LinePoints->SetPoint(i,pt);
     }
-    
+
   this->LinePoints->GetData()->Modified();
   this->LineData->Modified();
 }
@@ -828,38 +838,40 @@ void vtkImageTracerWidget::OnRightButtonDown()
     }
 
   int found = 0;
-  if ( this->CurrentPicker->Pick(X,Y,0.0,this->CurrentRenderer) )
-    {
-    vtkAssemblyPath* path = this->CurrentPicker->GetPath();
+  vtkAssemblyPath* path =
+    this->Interactor->GetAssemblyPath(X, Y, 0.,
+                                      this->CurrentPicker,
+                                      this->CurrentRenderer,
+                                      this,
+                                      this->ManagesPicking);
 
-    if ( path )
+  if ( path )
+    {
+    found = 1;
+    if ( this->State == vtkImageTracerWidget::Erasing ||
+         this->State == vtkImageTracerWidget::Moving  ||
+         this->State == vtkImageTracerWidget::Translating )
       {
-      found = 1;
-      if ( this->State == vtkImageTracerWidget::Erasing ||
-           this->State == vtkImageTracerWidget::Moving  ||
-           this->State == vtkImageTracerWidget::Translating )
+      this->CurrentHandleIndex = this->HighlightHandle(path->GetFirstNode()->GetViewProp());
+      if ( this->CurrentHandleIndex == -1 )
         {
-        this->CurrentHandleIndex = this->HighlightHandle(path->GetFirstNode()->GetViewProp());
-        if ( this->CurrentHandleIndex == -1 )
+        found = 0;  // we didn't hit a handle
+        for ( int i = 0; i < this->NumberOfHandles; ++i )
           {
-          found = 0;  // we didn't hit a handle
-          for ( int i = 0; i < this->NumberOfHandles; ++i )
-            {
-            this->Handle[i]->PickableOff();
-            }
+          this->Handle[i]->PickableOff();
           }
         }
-      else if ( this->State == vtkImageTracerWidget::Inserting )
+      }
+    else if ( this->State == vtkImageTracerWidget::Inserting )
+      {
+        if ( static_cast<vtkActor*>(path->GetFirstNode()->GetViewProp()) == this->LineActor )
         {
-          if ( static_cast<vtkActor*>(path->GetFirstNode()->GetViewProp()) == this->LineActor )
-          {
-          this->HighlightLine(1);
-          }
-        else
-          {
-          found = 0;
-          this->LineActor->PickableOff();
-          }
+        this->HighlightLine(1);
+        }
+      else
+        {
+        found = 0;
+        this->LineActor->PickableOff();
         }
       }
     }
@@ -1403,9 +1415,9 @@ void vtkImageTracerWidget::GetPath(vtkPolyData *pd)
 
 void vtkImageTracerWidget::SetSnapToImage(int snap)
 {
-  if ( this->Input )
+  if ( this->GetInput() )
     {
-    if ( this->Input->GetDataObjectType() != VTK_IMAGE_DATA )
+    if ( this->GetInput()->GetDataObjectType() != VTK_IMAGE_DATA )
       {
       vtkErrorMacro(<<"Input data must be of type vtkImageData");
       return;

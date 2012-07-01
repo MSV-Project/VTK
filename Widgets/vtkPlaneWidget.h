@@ -18,7 +18,7 @@
 // placed in a scene. The plane has four handles (at its corner vertices), a
 // normal vector, and the plane itself. The handles are used to resize the
 // plane; the normal vector to rotate it, and the plane can be picked and
-// translated. Selecting the plane while pressing CTRL makes it spin around 
+// translated. Selecting the plane while pressing CTRL makes it spin around
 // the normal. A nice feature of the object is that the vtkPlaneWidget, like
 // any 3D widget, will work with the current interactor style. That is, if
 // vtkPlaneWidget does not handle an event, then all other registered
@@ -65,10 +65,6 @@
 // property for the handles and plane. In addition there are methods to
 // constrain the plane so that it is perpendicular to the x-y-z axes.
 
-// .SECTION Caveats
-// Note that handles and plane can be picked even when they are "behind" other
-// actors.  This is an intended feature and not a bug.
-
 // .SECTION See Also
 // vtk3DWidget vtkBoxWidget vtkLineWidget vtkSphereWidget
 // vtkImplicitPlaneWidget
@@ -113,7 +109,7 @@ public:
   virtual void PlaceWidget(double bounds[6]);
   void PlaceWidget()
     {this->Superclass::PlaceWidget();}
-  void PlaceWidget(double xmin, double xmax, double ymin, double ymax, 
+  void PlaceWidget(double xmin, double xmax, double ymin, double ymax,
                    double zmin, double zmax)
     {this->Superclass::PlaceWidget(xmin,xmax,ymin,ymax,zmin,zmax);}
 
@@ -135,7 +131,7 @@ public:
   void SetPoint1(double x[3]);
   double* GetPoint1();
   void GetPoint1(double xyz[3]);
-  
+
   // Description:
   // Set/Get the position of the point defining the second axis of the plane.
   void SetPoint2(double x, double y, double z);
@@ -156,7 +152,7 @@ public:
   void SetNormal(double x[3]);
   double* GetNormal();
   void GetNormal(double xyz[3]);
-  
+
   // Description:
   // Control how the plane appears when GetPolyData() is invoked.
   // If the mode is "outline", then just the outline of the plane
@@ -178,7 +174,7 @@ public:
   // Description:
   // Force the plane widget to be aligned with one of the x-y-z axes.
   // Remember that when the state changes, a ModifiedEvent is invoked.
-  // This can be used to snap the plane to the axes if it is orginally
+  // This can be used to snap the plane to the axes if it is originally
   // not aligned.
   vtkSetMacro(NormalToXAxis,int);
   vtkGetMacro(NormalToXAxis,int);
@@ -213,26 +209,26 @@ public:
   // to have the initial placement follow suit.  Or, make changes after the
   // widget has been initialised and call UpdatePlacement() to realise.
   vtkPolyDataAlgorithm* GetPolyDataAlgorithm();
-   
+
   // Description:
   // Satisfies superclass API.  This will change the state of the widget to
   // match changes that have been made to the underlying PolyDataSource
   void UpdatePlacement(void);
 
   // Description:
-  // Get the handle properties (the little balls are the handles). The 
-  // properties of the handles when selected and normal can be 
+  // Get the handle properties (the little balls are the handles). The
+  // properties of the handles when selected and normal can be
   // manipulated.
   vtkGetObjectMacro(HandleProperty,vtkProperty);
   vtkGetObjectMacro(SelectedHandleProperty,vtkProperty);
-  
+
   // Description:
-  // Get the plane properties. The properties of the plane when selected 
+  // Get the plane properties. The properties of the plane when selected
   // and unselected can be manipulated.
   virtual void SetPlaneProperty(vtkProperty*);
   vtkGetObjectMacro(PlaneProperty,vtkProperty);
   vtkGetObjectMacro(SelectedPlaneProperty,vtkProperty);
-  
+
 protected:
   vtkPlaneWidget();
   ~vtkPlaneWidget();
@@ -250,11 +246,11 @@ protected:
     Outside
   };
 //ETX
-    
+
   //handles the events
-  static void ProcessEvents(vtkObject* object, 
+  static void ProcessEvents(vtkObject* object,
                             unsigned long event,
-                            void* clientdata, 
+                            void* clientdata,
                             void* calldata);
 
   // ProcessEvents() dispatches to these methods.
@@ -289,7 +285,7 @@ protected:
   void HandlesOff();
   int HighlightHandle(vtkProp *prop); //returns cell id
   virtual void SizeHandles();
-  
+
   // the normal cone
   vtkActor          *ConeActor;
   vtkPolyDataMapper *ConeMapper;
@@ -315,7 +311,10 @@ protected:
   vtkCellPicker *HandlePicker;
   vtkCellPicker *PlanePicker;
   vtkActor *CurrentHandle;
-  
+
+  // Register internal Pickers within PickingManager
+  virtual void RegisterPickers();
+
   // Methods to manipulate the hexahedron.
   void MoveOrigin(double *p1, double *p2);
   void MovePoint1(double *p1, double *p2);
@@ -326,13 +325,13 @@ protected:
   void Scale(double *p1, double *p2, int X, int Y);
   void Translate(double *p1, double *p2);
   void Push(double *p1, double *p2);
-  
+
   // Plane normal, normalized
   double Normal[3];
 
   // Transform the hexahedral points (used for rotations)
   vtkTransform *Transform;
-  
+
   // Properties used to control the appearance of selected objects and
   // the manipulator in general.
   vtkProperty *HandleProperty;
@@ -340,12 +339,12 @@ protected:
   vtkProperty *PlaneProperty;
   vtkProperty *SelectedPlaneProperty;
   void CreateDefaultProperties();
-  
+
   void GeneratePlane();
 
   int    LastPickValid;
   double HandleSizeFactor;
-  
+
 private:
   vtkPlaneWidget(const vtkPlaneWidget&);  //Not implemented
   void operator=(const vtkPlaneWidget&);  //Not implemented
