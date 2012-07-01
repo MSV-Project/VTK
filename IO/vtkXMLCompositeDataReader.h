@@ -67,7 +67,7 @@ protected:
   // Create a default executive.
   virtual vtkExecutive* CreateDefaultExecutive();
 
-  vtkXMLReader* GetReaderOfType(const char* type);
+  virtual vtkXMLReader* GetReaderOfType(const char* type);
 
   virtual int RequestInformation(vtkInformation*, 
                                  vtkInformationVector**, 

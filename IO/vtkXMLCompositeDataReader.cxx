@@ -361,11 +361,18 @@ vtkDataSet* vtkXMLCompositeDataReader::ReadDataset(vtkXMLDataElement* xmlElem,
     vtkErrorMacro("Could not create reader for " << rname);
     return 0;
     }
-  reader->SetFileName(fileName.c_str());
-  // initialize array selection so we don't have any residual array selections
-  // from previous use of the reader.
-  reader->GetPointDataArraySelection()->RemoveAllArrays();
-  reader->GetCellDataArraySelection()->RemoveAllArrays();
+  
+  if (!reader->GetFileName() ||
+     strcmp(fileName.c_str(), reader->GetFileName()) != 0)
+    {
+    reader->SetFileName(fileName.c_str());
+
+    // initialize array selection so we don't have any residual array selections
+    // from previous use of the reader.
+    reader->GetPointDataArraySelection()->RemoveAllArrays();
+    reader->GetCellDataArraySelection()->RemoveAllArrays();
+    }
+  
   reader->Update();
   vtkDataSet* output = reader->GetOutputAsDataSet();
   if (!output)
