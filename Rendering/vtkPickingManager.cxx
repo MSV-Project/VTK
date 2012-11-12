@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkTextureUnitManager.cxx
+  Module:    vtkPickingManager.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -13,8 +13,29 @@
 
 =========================================================================*/
 
+/*==============================================================================
+
+  Library: MSVTK
+
+  Copyright (c) Kitware Inc.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0.txt
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+
+==============================================================================*/
+
 // VTK includes
 #include "vtkAbstractPicker.h"
+#include "vtkAbstractPropPicker.h"
 #include "vtkCamera.h"
 #include "vtkCallbackCommand.h"
 #include "vtkCommand.h"
@@ -53,10 +74,11 @@ public:
                          void *callData);
 
   // Select the best picker based on various criterias such as z-depth,
-  // 2D overlay and/or distance to picked point
+  // 2D overlay and/or distance to picked point.
   vtkAbstractPicker* SelectPicker();
 
-  // Compute the selection given the distance to the camera
+  // Compute the selection. The current implementation use the distance
+  // between the world coordinates of a pick to the camera's ones.
   vtkAbstractPicker* ComputePickerSelection(double X, double Y, double Z,
                                             vtkRenderer* renderer);
 
@@ -75,6 +97,11 @@ public:
   // it will automatically be removed from the list as well.
   typedef std::vector<vtkSmartPointer<vtkObject> > CollectionType;
 
+  // For code clearance and performances during the computation std::map is
+  // used instead of a vector of pair. Nevertheless, it makes internally use of
+  // vtkSmartPointer and this class does not overload the order operators;
+  // therefore to following functor has to be implemented to keep the data
+  // structure consistent.
   struct less_smartPtrPicker
   {
     bool operator () (const vtkSmartPointer<vtkAbstractPicker>& first,
@@ -96,6 +123,9 @@ public:
 
   // Predicate comparing a vtkAbstractPicker*
   // and a vtkSmartPointer<vtkAbstractPicker> using the PickerObjectsType.
+  // As we use a vtkSmartPointer, this predicate allows to compare the equality
+  // of a pointer on a vtkAbstractPicker with the adress contained in
+  // a corresponding vtkSmartPointer.
   struct equal_smartPtrPicker
   {
     equal_smartPtrPicker(vtkAbstractPicker* picker) : Picker(picker) {}
@@ -110,6 +140,9 @@ public:
 
   // Predicate comparing a vtkObject*
   // and a vtkSmartPointer<vtkObject> using the PickerObjectsType.
+  // As we use a vtkSmartPointer, this predicate allows to compare the equality
+  // of a pointer on a vtkObject with the adress contained in
+  // a corresponding vtkSmartPointer.
   struct equal_smartPtrObject
   {
     equal_smartPtrObject(vtkObject* object) : Object(object) {}
@@ -240,12 +273,12 @@ vtkAbstractPicker* vtkPickingManager::vtkInternal::SelectPicker()
 vtkAbstractPicker* vtkPickingManager::vtkInternal::
 ComputePickerSelection(double X, double Y, double Z, vtkRenderer* renderer)
 {
+  vtkAbstractPicker* closestPicker = 0;
   if (!renderer)
     {
-    return 0;
+    return closestPicker;
     }
 
-  vtkAbstractPicker* closestPicker = 0;
   double* camPos = renderer->GetActiveCamera()->GetPosition();
   double smallestDistance2 = std::numeric_limits<double>::max();
 
@@ -291,12 +324,12 @@ void vtkPickingManager::vtkInternal::UpdateTime(vtkObject *vtkNotUsed(caller),
 
 //------------------------------------------------------------------------------
 vtkPickingManager::vtkPickingManager()
+  : Interactor(0)
+  , Enabled(false)
+  , OptimizeOnInteractorEvents(true)
+  , Internal(0)
 {
   this->Internal = new vtkInternal(this);
-  this->Interactor = 0;
-
-  this->Enabled = true;
-  this->OptimizeOnInteractorEvents = true;
 }
 
 //------------------------------------------------------------------------------
@@ -331,7 +364,7 @@ void vtkPickingManager::SetInteractor(vtkRenderWindowInteractor* rwi)
 //------------------------------------------------------------------------------
 void vtkPickingManager::SetOptimizeOnInteractorEvents(bool optimize)
 {
-  if (this->OptimizeOnInteractorEvents == optimize || !this->Interactor)
+  if (this->OptimizeOnInteractorEvents == optimize)
     {
     return;
     }
@@ -389,7 +422,7 @@ void vtkPickingManager::RemovePicker(vtkAbstractPicker* picker,
                  it->second.end(),
                  vtkPickingManager::vtkInternal::equal_smartPtrObject(object));
 
-  // The object is not associated with the given picker
+  // The object is not associated with the given picker.
   if (itObj == it->second.end())
     {
     return;
@@ -397,7 +430,7 @@ void vtkPickingManager::RemovePicker(vtkAbstractPicker* picker,
 
   it->second.erase(itObj);
 
-  // We delete the picker when it is not associated with any object.
+  // Delete the picker when it is not associated with any object anymore.
   if(it->second.size() == 0)
     {
     this->Internal->Pickers.erase(it);
@@ -423,7 +456,10 @@ void vtkPickingManager::RemoveObject(vtkObject* object)
 
       if (it->second.size() == 0)
         {
-        this->Internal->Pickers.erase(it);
+        vtkPickingManager::vtkInternal::PickerObjectsType::iterator
+          toRemove = it;
+        it++;
+        this->Internal->Pickers.erase(toRemove);
         continue;
         }
       }
@@ -463,9 +499,32 @@ bool vtkPickingManager::Pick(vtkAbstractPicker* picker)
 }
 
 //------------------------------------------------------------------------------
+vtkAssemblyPath* vtkPickingManager::
+GetAssemblyPath(double X, double Y, double Z,
+                vtkAbstractPropPicker* picker,
+                vtkRenderer* renderer,
+                vtkObject* obj)
+{
+  if (this->Enabled)
+    {
+    // Return 0 when the Picker is not selected
+    if (!this->Pick(picker, obj))
+      {
+      return 0;
+      }
+    }
+  else
+    {
+    picker->Pick(X, Y, Z, renderer);
+    }
+
+  return picker->GetPath();
+}
+
+//------------------------------------------------------------------------------
 int vtkPickingManager::GetNumberOfPickers()
 {
-  return this->Internal->Pickers.size();
+  return static_cast<int>(this->Internal->Pickers.size());
 }
 
 //------------------------------------------------------------------------------
@@ -486,7 +545,7 @@ int vtkPickingManager::GetNumberOfObjectsLinked(vtkAbstractPicker* picker)
     return 0;
     }
 
-  return it->second.size();
+  return static_cast<int>(it->second.size());
 }
 
 //------------------------------------------------------------------------------
@@ -494,12 +553,8 @@ void vtkPickingManager::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);
 
-  if ( this->Interactor )
-    {
-    os << indent << "RenderWindowInteractor: " << this->Interactor << "\n";
-    }
-
-  os << indent <<  "Registered pickers: " << this->Internal->Pickers.size() << "\n";
+  os << indent << "RenderWindowInteractor: " << this->Interactor << "\n";
+  os << indent << "NumberOfPickers: " << this->Internal->Pickers.size() << "\n";
 
   vtkPickingManager::vtkInternal::PickerObjectsType::iterator it =
     this->Internal->Pickers.begin();
@@ -507,7 +562,7 @@ void vtkPickingManager::PrintSelf(ostream& os, vtkIndent indent)
   for(; it != this->Internal->Pickers.end(); ++it)
     {
     os << indent << indent << "Picker: " << it->first.GetPointer() << "\n";
-    os << indent << indent << "Size associated objects: " << it->second.size()
+    os << indent << indent << "NumberOfObjectsLinked: " << it->second.size()
        << "\n";
     }
 }
